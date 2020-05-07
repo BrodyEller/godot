@@ -181,9 +181,67 @@ void VideoPlayer::_notification(int p_notification) {
 				return;
 			if (texture->get_width() == 0)
 				return;
-
-			Size2 s = expand ? get_size() : texture->get_size();
-			draw_texture_rect(texture, Rect2(Point2(), s), false);
+			
+			Size2 size;
+			Point2 offset;
+			Rect2 region;
+			bool tile = false;
+			
+			switch (stretch_mode) {
+				case STRETCH_SCALE_ON_EXPAND: {
+					size = expand ? get_size() : texture->get_size();
+				} break;
+				case STRETCH_SCALE: {
+					size = get_size();
+				} break;
+				case STRETCH_TILE: {
+					size = get_size();
+					tile = true;
+				} break;
+				case STRETCH_KEEP: {
+					size = texture->get_size();
+				} break;
+				case STRETCH_KEEP_CENTERED: {
+					offset = (get_size() - texture->get_size()) / 2;
+					size = texture->get_size();
+				} break;
+				case STRETCH_KEEP_ASPECT_CENTERED:
+				case STRETCH_KEEP_ASPECT: {
+					size = get_size();
+					int tex_width = texture->get_width() * size.height / texture->get_height();
+					int tex_height = size.height;
+					
+					if (tex_width > size.width) {
+						tex_width = size.width;
+						tex_height = texture->get_height() * tex_width / texture->get_width();
+					}
+					
+					if (stretch_mode == STRETCH_KEEP_ASPECT_CENTERED) {
+						offset.x += (size.width - tex_width) / 2;
+						offset.y += (size.height - tex_height) / 2;
+					}
+					
+					size.width = tex_width;
+					size.height = tex_height;
+				} break;
+				case STRETCH_KEEP_ASPECT_COVERED: {
+					size = get_size();
+					
+					Size2 tex_size = texture->get_size();
+					Size2 scale_size(size.width / tex_size.width, size.height / tex_size.height);
+					float scale = scale_size.width > scale_size.height ? scale_size.width : scale_size.height;
+					Size2 scaled_tex_size = tex_size * scale;
+					
+					region.position = ((scaled_tex_size - size) / scale).abs() / 2.0f;
+					region.size = size / scale;
+				} break;
+			}
+			
+			if (region.has_no_area()) {
+				draw_texture_rect(texture, Rect2(offset, size), tile);
+			} else {
+				draw_texture_rect_region(texture, Rect2(offset, size), region);
+			}
 
 		} break;
 	};
@@ -411,6 +469,14 @@ StringName VideoPlayer::get_bus() const {
 	return "Master";
 }
 
+void VideoPlayer::set_stretch_mode(StretchMode p_mode) {
+	stretch_mode = p_mode;
+}
+
+VideoPlayer::StretchMode VideoPlayer::get_stretch_mode() const {
+	return stretch_mode;
+}
+
 void VideoPlayer::_validate_property(PropertyInfo &p_property) const {
 
 	if (p_property.name == "bus") {
@@ -465,6 +531,9 @@ void VideoPlayer::_bind_methods() {
 
 	ClassDB::bind_method(D_METHOD("set_bus", "bus"), &VideoPlayer::set_bus);
 	ClassDB::bind_method(D_METHOD("get_bus"), &VideoPlayer::get_bus);
+  
+	ClassDB::bind_method(D_METHOD("set_stretch_mode", "stretch_mode"), &VideoPlayer::set_stretch_mode);
+	ClassDB::bind_method(D_METHOD("get_stretch_mode"), &VideoPlayer::get_stretch_mode);
 
 	ClassDB::bind_method(D_METHOD("get_video_texture"), &VideoPlayer::get_video_texture);
 
@@ -478,10 +547,20 @@ void VideoPlayer::_bind_methods() {
 	ADD_PROPERTY(PropertyInfo(Variant::BOOL, "autoplay"), "set_autoplay", "has_autoplay");
 	ADD_PROPERTY(PropertyInfo(Variant::BOOL, "paused"), "set_paused", "is_paused");
 	ADD_PROPERTY(PropertyInfo(Variant::BOOL, "expand"), "set_expand", "has_expand");
+	ADD_PROPERTY(PropertyInfo(Variant::INT, "stretch_mode", PROPERTY_HINT_ENUM, "Scale On Expand (Compat),Scale,Tile,Keep,Keep Centered,Keep Aspect,Keep Aspect Centered,Keep Aspect Covered"), "set_stretch_mode", "get_stretch_mode");
 	ADD_PROPERTY(PropertyInfo(Variant::INT, "buffering_msec", PROPERTY_HINT_RANGE, "10,1000"), "set_buffering_msec", "get_buffering_msec");
 	ADD_PROPERTY(PropertyInfo(Variant::REAL, "stream_position", PROPERTY_HINT_RANGE, "0,1280000,0.1", 0), "set_stream_position", "get_stream_position");
 
 	ADD_PROPERTY(PropertyInfo(Variant::STRING, "bus", PROPERTY_HINT_ENUM, ""), "set_bus", "get_bus");
+  
+	BIND_ENUM_CONSTANT(STRETCH_SCALE_ON_EXPAND);
+	BIND_ENUM_CONSTANT(STRETCH_SCALE);
+	BIND_ENUM_CONSTANT(STRETCH_TILE);
+	BIND_ENUM_CONSTANT(STRETCH_KEEP);
+	BIND_ENUM_CONSTANT(STRETCH_KEEP_CENTERED);
+	BIND_ENUM_CONSTANT(STRETCH_KEEP_ASPECT);
+	BIND_ENUM_CONSTANT(STRETCH_KEEP_ASPECT_CENTERED);
+	BIND_ENUM_CONSTANT(STRETCH_KEEP_ASPECT_COVERED);
 }
 
 VideoPlayer::VideoPlayer() {

@@ -39,6 +39,20 @@
 class VideoPlayer : public Control {
 
 	GDCLASS(VideoPlayer, Control);
+  
+public:
+	enum StretchMode {
+		STRETCH_SCALE_ON_EXPAND, //default, for backwards compatibility
+		STRETCH_SCALE,
+		STRETCH_TILE,
+		STRETCH_KEEP,
+		STRETCH_KEEP_CENTERED,
+		STRETCH_KEEP_ASPECT,
+		STRETCH_KEEP_ASPECT_CENTERED,
+		STRETCH_KEEP_ASPECT_COVERED,
+	};
+  
+private:
 
 	struct Output {
 
@@ -65,6 +79,7 @@ class VideoPlayer : public Control {
 	float volume;
 	double last_audio_time;
 	bool expand;
+  StretchMode stretch_mode;
 	bool loops;
 	int buffering_ms;
 	int audio_track;
@@ -82,9 +97,13 @@ protected:
 	void _validate_property(PropertyInfo &p_property) const;
 
 public:
+  
 	Size2 get_minimum_size() const;
 	void set_expand(bool p_expand);
 	bool has_expand() const;
+  
+	void set_stretch_mode(StretchMode p_mode);
+	StretchMode get_stretch_mode() const;
 
 	Ref<Texture> get_video_texture() const;
 
@@ -124,4 +143,5 @@ public:
 	~VideoPlayer();
 };
 
+VARIANT_ENUM_CAST(VideoPlayer::StretchMode);
 #endif // VIDEO_PLAYER_H
