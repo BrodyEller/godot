@@ -127,6 +127,7 @@ public:
 	float get_stream_position() const;
 	void set_stream_position(float p_position);
 	float get_stream_length() const;
+	Vector2 get_stream_dimensions() const;
 
 	void set_autoplay(bool p_enable);
 	bool has_autoplay() const;
